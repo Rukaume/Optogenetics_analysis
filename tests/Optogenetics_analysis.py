@@ -9,6 +9,7 @@ from tkinter import filedialog
 stimuli_list = [1775, 2610, 3745, 4326]
 threshold = 80
 Shortest_M_bout_duration = 5
+Activity_dur = 120 # (sec)
 
 def select_file():
     root = tkinter.Tk()
@@ -67,12 +68,72 @@ def analysis(path, stimuli_list):
         motion_duration_list.append(duration_analysis(motion_bout_df, stimuli_list[i]))
     motion_duration_df = pd.DataFrame(np.vstack((stimuli_list, motion_duration_list)).T,
                                       columns=["stimuli timing", "motion_duration (sec)"])
-    motion_duration_df.to_csv("./dfs/motion_duration_df.csv")
+    motion_duration_df.to_csv("./dfs/motion_duration_df.csv", index=False)
+    return motion_bout_df
+
+
+def activity_analysis(path, stimuli_list):
+    data = pd.read_csv(path)
+    timeaxis = data.iloc[:, 0] * 0.5
+    data["time"] = timeaxis
+    for i in range(len(stimuli_list)):
+        start = stimuli_list[i] - 2*Shortest_M_bout_duration
+        end = stimuli_list[i] + Activity_dur*2
+        extracted_df = data.iloc[start:end, 1]
+        extracted_df.to_csv("./dfs/Stimuli_{}.csv".format(i), index=False)
+
+
+def maxisland_start_len_mask(a, fillna_index=-1, fillna_len=0):
+    # a is a boolean array
+    a = np.array(a)
+    a = a.reshape(len(a), 1)
+
+    pad = np.zeros(a.shape[1], dtype=bool)
+    mask = np.vstack((pad, a, pad))
+
+    mask_step = mask[1:] != mask[:-1]
+    idx = np.flatnonzero(mask_step.T)
+    island_starts = idx[::2]
+    island_lens = idx[1::2] - idx[::2]
+    n_islands_percol = mask_step.sum(0) // 2
+
+    bins = np.repeat(np.arange(a.shape[1]), n_islands_percol)
+    scale = island_lens.max() + 1
+
+    scaled_idx = np.argsort(scale * bins + island_lens)
+    grp_shift_idx = np.r_[0, n_islands_percol.cumsum()]
+    max_island_starts = island_starts[scaled_idx[grp_shift_idx[1:] - 1]]
+
+    max_island_percol_start = max_island_starts % (a.shape[0] + 1)
+
+    valid = n_islands_percol != 0
+    cut_idx = grp_shift_idx[:-1][valid]
+    max_island_percol_len = np.maximum.reduceat(island_lens, cut_idx)
+
+    out_len = np.full(a.shape[1], fillna_len, dtype=int)
+    out_len[valid] = max_island_percol_len
+    out_index = np.where(valid, max_island_percol_start, fillna_index)
+    return island_starts, island_lens
+
+
+def bout_duration_analysis(motion_bout_df, stimuli_list):
+    # get boolian array
+    before_stimuli = motion_bout_df.iloc[:stimuli_list[0]]["motion_bout"].values
+    after_stimuli = motion_bout_df.iloc[stimuli_list[0]:]["motion_bout"].values
+    before_island_starts, before_island_lens = maxisland_start_len_mask(before_stimuli)
+    after_island_starts, after_island_lens = maxisland_start_len_mask(after_stimuli)
+    island_df = pd.DataFrame([np.array(before_island_lens), np.array(after_island_lens)]).T
+    island_df = island_df.rename(columns={0:"before", 1:"after"})
+
+    island_df.to_csv("./dfs/island_analysis.csv", index= False)
+
 
 
 def main():
     path = select_file()
-    analysis(path, stimuli_list)
+    motion_bout_df = analysis(path, stimuli_list)
+    activity_analysis(path, stimuli_list)
+    bout_duration_analysis(motion_bout_df, stimuli_list)
 
 
 if __name__ == '__main__':

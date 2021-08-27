@@ -6,7 +6,8 @@ import tkinter
 from tkinter import messagebox
 from tkinter import filedialog
 
-stimuli_list = [1775, 2610, 3745, 4326]
+stimuli_list = [1613, 2830,3577, 4352, 5429]
+
 threshold = 80
 Shortest_M_bout_duration = 5
 Activity_dur = 120 # (sec)
@@ -52,7 +53,7 @@ def analysis(path, stimuli_list):
     motion = np.zeros(len(timeaxis))
     for i in np.where(motion_data > threshold)[0]:
         timeduration = float(timeaxis[i] - timeaxis[tempstart])
-        if timeduration < Shortest_M_bout_duration:
+        if timeduration <= Shortest_M_bout_duration:
             motion[tempstart:i] = 1
         else:
             pass
@@ -118,14 +119,21 @@ def maxisland_start_len_mask(a, fillna_index=-1, fillna_len=0):
 
 def bout_duration_analysis(motion_bout_df, stimuli_list):
     # get boolian array
-    before_stimuli = motion_bout_df.iloc[:stimuli_list[0]]["motion_bout"].values
+    before_stimuli = motion_bout_df.iloc[600:stimuli_list[0]]["motion_bout"].values
     after_stimuli = motion_bout_df.iloc[stimuli_list[0]:]["motion_bout"].values
     before_island_starts, before_island_lens = maxisland_start_len_mask(before_stimuli)
     after_island_starts, after_island_lens = maxisland_start_len_mask(after_stimuli)
     island_df = pd.DataFrame([np.array(before_island_lens), np.array(after_island_lens)]).T
     island_df = island_df.rename(columns={0:"before", 1:"after"})
-
     island_df.to_csv("./dfs/island_analysis.csv", index= False)
+
+    before_stimuli = motion_bout_df.iloc[600:stimuli_list[0]]["motion_bout"].values
+    after_stimuli = motion_bout_df.iloc[stimuli_list[0]:stimuli_list[1]]["motion_bout"].values
+    before_island_starts, before_island_lens = maxisland_start_len_mask(before_stimuli)
+    after_island_starts, after_island_lens = maxisland_start_len_mask(after_stimuli)
+    island_df = pd.DataFrame([np.array(before_island_lens), np.array(after_island_lens)]).T
+    island_df = island_df.rename(columns={0: "before", 1: "after"})
+    island_df.to_csv("./dfs/island_analysis_only_1st.csv", index=False)
 
 
 

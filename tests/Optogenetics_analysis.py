@@ -6,7 +6,7 @@ import tkinter
 from tkinter import messagebox
 from tkinter import filedialog
 
-stimuli_list =[1700, 2147, 2567, 3217, 3614]
+stimuli_list =[1420, 2128, 2514, 3097, 3475]
 
 threshold = 50
 Shortest_M_bout_duration = 5

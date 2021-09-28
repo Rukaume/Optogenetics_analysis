@@ -73,101 +73,19 @@ def data_extraction_and_summarize(stimuli_data_list, date_list):
 
         # get data
         current_data_array = pd.read_csv(path).values
+        current_data_name = current_data_experiment_name + "Stimuli_" + current_stimuli_number
 
         # add data
         if current_data_analyzed_date in data_dict:
             saved_df = data_dict[current_data_analyzed_date]
-            saved_df[current_data_experiment_name] = current_data_array
+            saved_df[current_data_name] = current_data_array
         else:
+            data_dict[current_data_analyzed_date] = pd.DataFrame(current_data_array,
+                                                                 columns=current_data_name)
 
-
-    """is_labels_MQ = [[0] for i in range(len(date_list))]
-    is_labels_QM = [[0] for i in range(len(date_list))]
-    MQ_labels = [[0] for i in range(len(date_list))]
-    QM_labels = [[0] for i in range(len(date_list))]
-    # make directories
-    os.makedirs("./extracted_data", exist_ok=True)
-    # MQ data extraction
-    # initiation the data list
-    island_MQ_data = [[0] for i in range(len(date_list))]
-    all_MQ_data = [[0] for i in range(len(date_list))]
-    for path in MQ_list:
-        # check directory type, island? MQ?
-        dir_type = path.split("\\")[-2]
-        Ex_date = [i for i in path.split("\\") if re.match("Ex-\d+_date_\d+-\d+-\d+", i)][0].split("_")[-1]
-        # index of Ex_date
-        index_of_date = date_list.index(Ex_date)
-        os.makedirs("./extracted_data/{}".format(Ex_date), exist_ok=True)
-        data = pd.read_csv(path)
-        if re.match("island\d+", dir_type):
-            temp_array = data["deltaF/F"].values
-            if len(island_MQ_data[index_of_date]) == 1:
-                island_MQ_data[index_of_date] = temp_array
-            else:
-                island_MQ_data[index_of_date]  = np.vstack((island_MQ_data[index_of_date],
-                                                            temp_array))
-            # island_MQ_data.append(temp_array)
-            if len(all_MQ_data[index_of_date]) == 1:
-                all_MQ_data[index_of_date] = temp_array
-            else:
-                all_MQ_data[index_of_date] = np.vstack((all_MQ_data[index_of_date], temp_array))
-            # all_MQ_data.append(temp_array)
-            is_labels_MQ[index_of_date].append("MQ_" + path.split("\\")[1] + "_" + path.split("\\")[-2])
-            MQ_labels[index_of_date].append("MQ_" + path.split("\\")[1] + "_" + path.split("\\")[-2])
-        # MQ tr data
-        else:
-            temp_array = data["deltaF/F"].values
-            if len(all_MQ_data[index_of_date]) == 1:
-                all_MQ_data[index_of_date] = temp_array
-            else:
-                all_MQ_data[index_of_date] = np.vstack((all_MQ_data[index_of_date], temp_array))
-            # all_MQ_data.append(temp_array)
-            MQ_labels[index_of_date].append("MQ_" + path.split("\\")[1] + "_" + path.split("\\")[-2])
-    # make dataframes
-    for i in range(len(date_list)):
-        island_MQ_df = pd.DataFrame(np.array(island_MQ_data[i]).T, columns=is_labels_MQ[i][1:])
-        all_MQ_df = pd.DataFrame(np.array(all_MQ_data[i]).T, columns=MQ_labels[i][1:])
-    # save
-        island_MQ_df.to_csv("./extracted_data/{}/island_MQ.csv".format(date_list[i]))
-        all_MQ_df.to_csv("./extracted_data/{}/all_MQ.csv".format(date_list[i]))
-
-    # QM data extraction
-    island_QM_data = [[0] for i in range(len(date_list))]
-    all_QM_data = [[0] for i in range(len(date_list))]
-    for path in QM_list:
-        dir_type = path.split("\\")[-2]
-        Ex_date = [i for i in path.split("\\") if re.match("Ex-\d+_date_\d+-\d+-\d+", i)][0].split("_")[-1]
-        os.makedirs("./extracted_data/{}".format(Ex_date), exist_ok=True)
-        index_of_date = date_list.index(Ex_date)
-        data = pd.read_csv(path)
-        if re.match("island\d+", dir_type):
-            temp_array = data["deltaF/F"].values
-            if len(island_QM_data[index_of_date]) == 1:
-                island_QM_data[index_of_date] = temp_array
-            else:
-                island_QM_data[index_of_date] = np.vstack((island_QM_data[index_of_date], temp_array))
-            # island_MQ_data.append(temp_array)
-            if len(all_QM_data[index_of_date]) == 1:
-                all_QM_data[index_of_date] = temp_array
-            else:
-                all_QM_data[index_of_date] = np.vstack((all_QM_data[index_of_date], temp_array))
-            is_labels_QM[index_of_date].append("QM_" + path.split("\\")[1] + "_" + path.split("\\")[-2])
-            QM_labels[index_of_date].append("QM_" + path.split("\\")[1] + "_" + path.split("\\")[-2])
-        else:
-            temp_array = data["deltaF/F"].values
-            if len(all_QM_data[index_of_date]) == 1:
-                all_QM_data[index_of_date] = temp_array
-            else:
-                all_QM_data[index_of_date] = np.vstack((all_QM_data[index_of_date], temp_array))
-            # all_MQ_data.append(temp_array)
-            QM_labels[index_of_date].append("QM_" + path.split("\\")[1] + "_" + path.split("\\")[-2])
-
-    for i in range(len(date_list)):
-        island_QM_df = pd.DataFrame(np.array(island_QM_data[i]).T, columns=is_labels_QM[i][1:])
-        all_QM_df = pd.DataFrame(np.array(all_QM_data[i]).T, columns=QM_labels[i][1:])
-    # save
-        island_QM_df.to_csv("./extracted_data/{}/island_QM.csv".format(date_list[i]))
-        all_QM_df.to_csv("./extracted_data/{}/all_QM.csv".format(date_list[i]))"""
+    for key in data_dict:
+        data = data_dict[key]
+        data.to_csv("./extracted_data/{}".format(key))
 
 
 def main():

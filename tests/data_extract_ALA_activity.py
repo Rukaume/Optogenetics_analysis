@@ -83,8 +83,11 @@ def data_extraction_and_summarize(stimuli_data_list):
 
         # add data
         if current_data_analyzed_date in data_dict:
-            saved_df = data_dict[current_data_analyzed_date]
-            saved_df[current_data_name] = current_data_array
+            if len(data_dict[current_data_analyzed_date]) != len(current_data_array):
+                pass
+            else:
+                saved_df = data_dict[current_data_analyzed_date]
+                saved_df[current_data_name] = current_data_array
         else:
             data_dict[current_data_analyzed_date] = pd.DataFrame(current_data_array.T[0],
                                                                  columns = [current_data_name])

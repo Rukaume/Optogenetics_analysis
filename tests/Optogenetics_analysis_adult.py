@@ -6,7 +6,7 @@ import tkinter
 from tkinter import messagebox
 from tkinter import filedialog
 
-stimuli_list = [62, 302, 541]
+stimuli_list = [251, 572, 1079]
 Baseline_duration = 10 # (sec)
 Activity_dur = 90  # (sec)
 

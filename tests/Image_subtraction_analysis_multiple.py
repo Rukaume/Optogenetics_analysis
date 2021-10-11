@@ -8,22 +8,20 @@ import cv2
 import datetime
 import os
 import os.path
-import sys
-import time
+
 import tkinter
 from tkinter import filedialog
 from tkinter import messagebox
 
 import numpy as np
 import pandas as pd
-from PIL import Image
+
 from numpy import ndarray
 from skimage.color import rgb2gray
-from skimage import io
-from skimage import io, img_as_float, img_as_ubyte
+
+from skimage import io, img_as_float
 from tqdm import tqdm
-from skimage.filters import median, gaussian
-from skimage.morphology import disk
+
 
 # parameters
 threshold = 7

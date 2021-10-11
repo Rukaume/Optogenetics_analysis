@@ -6,10 +6,12 @@ import tkinter
 from tkinter import messagebox
 from tkinter import filedialog
 
-stimuli_list =[62, 302, 541]
+stimuli_list = [1346, 1884, 2259, 2727, 3122]
 threshold = 50
 Shortest_M_bout_duration = 5
-Activity_dur = 120 # (sec)
+Activity_dur = 120  # (sec)
+Baseline_start = 600  # (images)
+
 
 def select_file():
     root = tkinter.Tk()
@@ -57,6 +59,7 @@ def analysis(path, stimuli_list):
         else:
             pass
         tempstart = i
+
     plt.plot(motion, color="black")
     plt.savefig("./figs/motion_bout_fig.png")
     timeaxis_array = timeaxis.values
@@ -77,8 +80,8 @@ def activity_analysis(path, stimuli_list):
     timeaxis = data.iloc[:, 0] * 0.5
     data["time"] = timeaxis
     for i in range(len(stimuli_list)):
-        start = stimuli_list[i] - 2*Shortest_M_bout_duration
-        end = stimuli_list[i] + Activity_dur*2
+        start = stimuli_list[i] - 2 * Shortest_M_bout_duration
+        end = stimuli_list[i] + Activity_dur * 2
         extracted_df = data.iloc[start:end, 1]
         extracted_df.to_csv("./dfs/Stimuli_{}.csv".format(i), index=False)
 
@@ -116,31 +119,67 @@ def maxisland_start_len_mask(a, fillna_index=-1, fillna_len=0):
     return island_starts, island_lens
 
 
-def bout_duration_analysis(motion_bout_df, stimuli_list):
-    # get boolian array
-    before_stimuli = motion_bout_df.iloc[600:stimuli_list[0]]["motion_bout"].values
-    after_stimuli = motion_bout_df.iloc[stimuli_list[0]:]["motion_bout"].values
-    before_island_starts, before_island_lens = maxisland_start_len_mask(before_stimuli)
-    after_island_starts, after_island_lens = maxisland_start_len_mask(after_stimuli)
-    island_df = pd.DataFrame([np.array(before_island_lens), np.array(after_island_lens)]).T
-    island_df = island_df.rename(columns={0:"before", 1:"after"})
-    island_df.to_csv("./dfs/island_analysis.csv", index= False)
+def Change_data_to_boolian_df(data_array, time_axis):
+    data_df = pd.DataFrame(np.stack([time_axis, data_array], axis=1), columns=["time", "locomotor_activity"])
+    data_df["loc_bool"] = np.where(data_df["locomotor_activity"].values < threshold, 0, 1)
+    data_df["loc_bool_not"] = np.where(data_df["locomotor_activity"].values < threshold, 1, 0)
+    return data_df
 
-    before_stimuli = motion_bout_df.iloc[600:stimuli_list[0]]["motion_bout"].values
-    after_stimuli = motion_bout_df.iloc[stimuli_list[0]:stimuli_list[1]]["motion_bout"].values
-    before_island_starts, before_island_lens = maxisland_start_len_mask(before_stimuli)
-    after_island_starts, after_island_lens = maxisland_start_len_mask(after_stimuli)
-    island_df = pd.DataFrame([np.array(before_island_lens), np.array(after_island_lens)]).T
-    island_df = island_df.rename(columns={0: "before", 1: "after"})
-    island_df.to_csv("./dfs/island_analysis_only_1st.csv", index=False)
 
+def State_analysis_preprocessing(M_starts, M_durations, Q_starts, Q_durations):
+    # if the motion bouts started before quiescent bouts, delete the first q bout
+    if M_starts[0] > Q_starts[0]:
+        Q_durations = Q_durations[1:]
+    if len(M_durations) > len(Q_durations):
+        M_durations = M_durations[:-1]
+    Bouts_df = pd.DataFrame(np.stack([M_durations, Q_durations], axis=1),
+                            columns=["Motion_bout", "Quiescent_bout"])
+    return Bouts_df
+
+
+def state_analysis(path, stimuli_list):
+    """
+    :param path: csv file path
+    :param stimuli_list: blue light stim list
+
+    This function conduct the state analysis for the optogenetics experiment
+    """
+    data = pd.read_csv(path)
+    data["time"] = data.iloc[:, 0] * 0.5
+    # extract the before stim data
+    if stimuli_list[0] < Baseline_start:
+        pass
+    else:
+        # before stimulation analysis
+        before_stim_data = data[Baseline_start:stimuli_list[0]]
+        before_stim_df = Change_data_to_boolian_df(before_stim_data["0"].values, before_stim_data["time"].values)
+        Before_M_starts, Before_M_durations = maxisland_start_len_mask(before_stim_df["loc_bool"])
+        Before_Q_starts, Before_Q_durations = maxisland_start_len_mask(before_stim_df["loc_bool_not"])
+        Before_bouts_df = State_analysis_preprocessing(Before_M_starts,
+                                                       Before_M_durations,
+                                                       Before_Q_starts,
+                                                       Before_Q_durations)
+        Before_bouts_df.to_csv("./dfs/Before_bouts_df.csv", index=False)
+
+        # after stimulation analysis
+        after_stim_data_list = [data[stimuli_list[i]:stimuli_list[i + 1] - 1] for i in range(len(stimuli_list)-1)]
+        for i in range(len(after_stim_data_list)):
+            temp_stim_data = after_stim_data_list[i]
+            temp_stim_df = Change_data_to_boolian_df(temp_stim_data["0"].values, temp_stim_data["time"].values)
+            M_starts, M_durations = maxisland_start_len_mask(temp_stim_df["loc_bool"])
+            Q_starts, Q_durations = maxisland_start_len_mask(temp_stim_df["loc_bool_not"])
+            Bouts_df = State_analysis_preprocessing(M_starts,
+                                                    M_durations,
+                                                    Q_starts,
+                                                    Q_durations)
+            Bouts_df.to_csv("./dfs/Stim{}_bouts_df.csv".format(i), index=False)
 
 
 def main():
     path = select_file()
     motion_bout_df = analysis(path, stimuli_list)
     activity_analysis(path, stimuli_list)
-    bout_duration_analysis(motion_bout_df, stimuli_list)
+    state_analysis(path, stimuli_list)
 
 
 if __name__ == '__main__':
